@@ -18,7 +18,19 @@ kind create cluster --name management
 
 This will add the `kind-management` cluster and context to your default Kubeconfig file, as well as set it as the current context.
 
-From there, you can install Sveltos by following their installation instructions: https://projectsveltos.github.io/sveltos/getting_started/install/install/.
+From there, you can install Sveltos by following their installation instructions: https://projectsveltos.github.io/sveltos/getting_started/install/install/. If you prefer to use Helm (which is what I did), you can run:
+
+```sh
+helm repo add projectsveltos https://projectsveltos.github.io/helm-charts
+helm repo update
+helm install projectsveltos projectsveltos/projectsveltos -n projectsveltos --create-namespace --set agent.managementCluster=true
+````
+
+**Super Important:** Sveltos will automatically register the cluster it lives in as a managed cluster. But in order to make the vCluster registration work for the Sveltos event-handling resources in this repo, you'll nee to label the cluster properly. You can do that by running:
+
+```sh
+kubectl label sveltoscluster mgmt "sveltos-cluster=management" -n mgmt
+```
 
 ### EKS Cluster
 
@@ -55,23 +67,33 @@ One thing I noticed about these .tf files is that they fail to set the EBS stora
 
 What I did instead was I added the right annotation to the StorageClass YAML that sets EBS as the default.
 
-You can add the following to the `metadata.annotations` block of the EBS Storage Class configuration:
+Make sure you're configured to target your EKS cluster, and run the following command to apply the change:
 
-```yaml
-annotations:
-  # ...
-  "storageclass.kubernetes.io/is-default-class": true
+```sh
+kubectl patch storageclass gp2 -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
 ```
 
 ### Register that EKS cluster in Sveltos
 
-You'll need to create a ServiceAccount and corresponding token Secret that Sveltos can use to access the EKS cluster's control plane API.
+For this step, you'll need to have `svletosctl` installed. You can find instructions for that here: https://projectsveltos.github.io/sveltos/main/getting_started/sveltosctl/sveltosctl/.
 
-If you're not familiar with how to do that, this page on Oracle's website is a good reference: https://docs.oracle.com/en-us/iaas/Content/ContEng/Tasks/contengaddingserviceaccttoken.htm.
+You'll need to create a ServiceAccount and corresponding token Secret that Sveltos can use to access the EKS cluster's control plane API. The script in the root of this repo, `create-sa-token.sh`, will do this for you. Make sure you're configured to target your EKS cluster, and run:
 
-Then it's a matter of filling in the blanks in a standard Kubeconfig template: https://devopscube.com/kubernetes-kubeconfig-file/
+```sh
+sh create-sa-token.sh
+```
 
-P.S. I'm sure there's an automated way to do this, but the 30 seconds of copy-pasta has never been painful enough for me to bother learning how.
+Then change your `kubectl` context back to `kind-management`, and run:
+
+```sh
+sveltosctl register cluster \             
+    --namespace=default \
+    --cluster=eks-vcluster \
+    --kubeconfig=./admin.config \
+    --labels=environment=development,vcluster=host
+```
+
+The labels are important, as they will be used later to target this cluster for vCluster installation.
 
 ## EVENTS!!!
 
@@ -84,12 +106,18 @@ kubectl apply -f sveltos-resources/lb
 kubectl apply -f sveltos-resources/vcluster
 ```
 
-You're crushing it.
+These will create the necessary Sveltos resources to listen for events that will kick off the automated workflows.
 
-From here, all you have to do is run the single `helm` command that kicks off the entire automated workflow.
+Now change your `kubectl` context back to your EKS cluster, and run:
 
 ```sh
 helm upgrade --install developer-load-balancers ./charts
 ```
 
-Bangarang, Rufio.
+That's everything you need to do to get the automation going. You can check the status of the vCluster installation by running:
+
+```sh
+kubectl get pods -A | grep vcluster
+```
+
+Enjoy!

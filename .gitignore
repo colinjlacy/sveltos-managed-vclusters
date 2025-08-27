@@ -29,3 +29,9 @@ terraform.rc
 
 # Mac files
 .DS_Store
+
+# Generated Kubeconfig files
+*.config
+
+# JetBrains IDEs
+.idea/
