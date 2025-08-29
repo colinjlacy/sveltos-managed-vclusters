@@ -1,5 +1,7 @@
 secret=admin-token
 
+kubectl apply -f ./eks-cluster/sa--admin.yaml
+
 context=$(kubectl config current-context)
 cluster=$(kubectl config view -o jsonpath="{.contexts[?(@.name == \"$context\")].context.cluster}")
 server=$(kubectl config view -o jsonpath="{.clusters[?(@.name == \"$cluster\")].cluster.server}")

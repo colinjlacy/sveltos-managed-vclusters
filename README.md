@@ -77,13 +77,17 @@ kubectl patch storageclass gp2 -p '{"metadata": {"annotations":{"storageclass.ku
 
 For this step, you'll need to have `svletosctl` installed. You can find instructions for that here: https://projectsveltos.github.io/sveltos/main/getting_started/sveltosctl/sveltosctl/.
 
-You'll need to create a ServiceAccount and corresponding token Secret that Sveltos can use to access the EKS cluster's control plane API. The script in the root of this repo, `create-sa-token.sh`, will do this for you. Make sure you're configured to target your EKS cluster, and run:
+You'll need to create a ServiceAccount and corresponding token Secret that Sveltos can use to access the EKS cluster's control plane API. The script in the root of this repo, `create-sa-token.sh`, will do this for you, as well as create a kubconfig file that can be used to access the EKS cluster with that service account's token. 
+
+Make sure you're configured to target your EKS cluster, and run:
 
 ```sh
 sh create-sa-token.sh
 ```
 
-Then change your `kubectl` context back to `kind-management`, and run:
+You'll see a file named `admin.config` created in the root of this repo. This is the kubeconfig file that you'll use to register the EKS cluster with Sveltos. 
+
+Change your `kubectl` context back to `kind-management`, and run:
 
 ```sh
 sveltosctl register cluster \             
@@ -108,7 +112,9 @@ kubectl apply -f sveltos-resources/vcluster
 
 These will create the necessary Sveltos resources to listen for events that will kick off the automated workflows.
 
-Now change your `kubectl` context back to your EKS cluster, and run:
+## Did it work?
+
+Change your `kubectl` context back to your EKS cluster, and run:
 
 ```sh
 helm upgrade --install developer-load-balancers ./charts
@@ -120,4 +126,4 @@ That's everything you need to do to get the automation going. You can check the 
 kubectl get pods -A | grep vcluster
 ```
 
-Enjoy!
+From here, you can label the clusters registered in Sveltos to apply different ClusterProfiles, which will in turn install different software. You can use the ClusterProfiles in `/sveltos-resources/profiles` as examples, or create your own.
