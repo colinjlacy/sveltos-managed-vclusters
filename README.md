@@ -90,7 +90,7 @@ You'll see a file named `admin.config` created in the root of this repo. This is
 Change your `kubectl` context back to `kind-management`, and run:
 
 ```sh
-sveltosctl register cluster \             
+sveltosctl register cluster \
     --namespace=default \
     --cluster=eks-vcluster \
     --kubeconfig=./admin.config \
